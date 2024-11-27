@@ -4,6 +4,9 @@ namespace App\Services;
 
 use App\Models\Area;
 
+use Illuminate\Validation\ValidationException;
+use Validator;
+
 class AreaService
 {
     protected $area;
@@ -25,11 +28,13 @@ class AreaService
 
     public function createArea($params)
     {
+        $this->validateParams($params);
         return $this->area->create($params);
     }
 
     public function updateArea($id, $params)
     {
+        $this->validateParams($params);
         $area = $this->getAreaById($id);
         if ($area) {
             $area->update($params);
@@ -46,5 +51,27 @@ class AreaService
             return true;
         }
         return false;
+    }
+
+    public function getAllAreasPaginated($pageSize = 5, $page = 1, $search = null)
+    {
+        $query = Area::query();
+
+        if ($search) {
+            $query->where('name', 'like', '%' . $search . '%');
+        }
+
+        return $query->paginate($page, ['*'], 'page', $pageSize);
+    }
+    
+    private function validateParams(array $data)
+    {
+        $validator = Validator::make($data, [
+            'name' => 'required|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            throw new ValidationException($validator);
+        }
     }
 }

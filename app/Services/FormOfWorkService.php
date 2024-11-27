@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\FormOfWork;
+use Illuminate\Validation\ValidationException;
+use Validator;
 
 class FormOfWorkService
 {
@@ -23,17 +25,19 @@ class FormOfWorkService
         return $this->formOfWork->find($id);
     }
 
-    public function createFormOfWork(array $data)
+    public function createFormOfWork($params)
     {
-        return $this->formOfWork->create($data);
+        $this->validateParams($params);
+        return $this->formOfWork->create($params);
     }
 
-    public function updateFormOfWork($id, array $data)
+    public function updateFormOfWork($id, $params)
     {
+        $this->validateParams($params);
         $formOfWork = $this->getFormOfWorkById($id);
 
         if ($formOfWork) {
-            $formOfWork->update($data);
+            $formOfWork->update($params);
             return $formOfWork;
         }
 
@@ -50,5 +54,27 @@ class FormOfWorkService
         }
 
         return false;
+    }
+    public function getAllFormOfWorkPaginated($pageSize = 5, $page = 1, $search = null)
+    {
+        $query = FormOfWork::query();
+
+        if ($search) {
+            $query->where('name', 'like', '%' . $search . '%');
+        }
+
+        return $query->paginate($page, ['*'], 'page', $pageSize);
+    }
+    
+    private function validateParams($params)
+    {
+        $validator = Validator::make($params, [
+            'name' => 'required|string|max:255',
+            'description' => 'required|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            throw new ValidationException($validator);
+        }
     }
 }

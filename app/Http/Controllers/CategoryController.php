@@ -14,17 +14,28 @@ class CategoryController extends Controller
         $this->categoryService = $categoryService;
     }
 
-    public function index()
+    public function index(Request $request)
     {
         try {
-            $categories = $this->categoryService->getAllCategories();
+            $perPage = $request->query('p', 1);
+            $size = $request->query('s', 5);
+            $search = $request->query('q', null);
+            $categories = $this->categoryService->getAllCategoriesPaginated($perPage, $size, $search);
             return response()->json([
-                'message' => 'Categories retrieved successfully.',
-                'data' => $categories,
+                'message' => 'Catogories retrieved successfully',
+                'data' => $categories->items(),
+                'pagination' => [
+                    'total' => $categories->total(),
+                    'size' => $categories->perPage(),
+                    'current_page' => $categories->currentPage(),
+                    'last_page' => $categories->lastPage(),
+                    'from' => $categories->firstItem(),
+                    'to' => $categories->lastItem(),
+                ]
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Failed to retrieve categories.',
+                'message' => 'Failed to retrieve catogories.',
                 'error' => $e->getMessage(),
             ], 500);
         }

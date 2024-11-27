@@ -15,13 +15,24 @@ class CompanyController extends Controller
     }
 
 
-    public function index()
+    public function index(Request $request)
     {
         try {
-            $companies = $this->companyService->getAllCompanies();
+            $perPage = $request->query('p', 1);
+            $size = $request->query('s', 5);
+            $search = $request->query('q', null);
+            $companies = $this->companyService->getAllCompaniesPaginated($perPage, $size, $search);
             return response()->json([
-                'message' => 'Companies retrieved successfully.',
-                'data' => $companies,
+                'message' => 'Companies retrieved successfully',
+                'data' => $companies->items(),
+                'pagination' => [
+                    'total' => $companies->total(),
+                    'size' => $companies->perPage(),
+                    'current_page' => $companies->currentPage(),
+                    'last_page' => $companies->lastPage(),
+                    'from' => $companies->firstItem(),
+                    'to' => $companies->lastItem(),
+                ]
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
@@ -29,6 +40,7 @@ class CompanyController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+
     }
 
 

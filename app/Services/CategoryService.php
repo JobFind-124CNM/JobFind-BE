@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Category;
+use Illuminate\Validation\ValidationException;
+use Validator;
 
 class CategoryService
 {
@@ -23,20 +25,21 @@ class CategoryService
         return $this->category->find($id);
     }
 
-    public function createCategory(array $data)
+    public function createCategory($params)
     {
-        return $this->category->create($data);
+        $this->validateParams($params);
+        return $this->category->create($params);
     }
 
-    public function updateCategory($id, array $data)
+    public function updateCategory($id, $params)
     {
+        $this->validateParams($params);
         $category = $this->getCategoryById($id);
 
         if ($category) {
-            $category->update($data);
+            $category->update($params);
             return $category;
         }
-
         return null;
     }
 
@@ -50,5 +53,27 @@ class CategoryService
         }
 
         return false;
+    }
+    public function getAllCategoriesPaginated($pageSize = 5, $page = 1, $search = null)
+    {
+        $query = Category::query();
+
+        if ($search) {
+            $query->where('name', 'like', '%' . $search . '%');
+        }
+
+        return $query->paginate($page, ['*'], 'page', $pageSize);
+    }
+    
+    private function validateParams($params)
+    {
+        $validator = Validator::make($params, [
+            'name' => 'required|string|max:255',
+            'description' => 'required|string|max:255'
+        ]);
+
+        if ($validator->fails()) {
+            throw new ValidationException($validator);
+        }
     }
 }

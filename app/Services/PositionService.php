@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Position;
+use Illuminate\Validation\ValidationException;
+use Validator;
 
 class PositionService
 {
@@ -25,11 +27,13 @@ class PositionService
 
     public function createPosition($params)
     {
+        $this->validateParams($params);
         return $this->position->create($params);
     }
 
     public function updatePosition($id, $params)
     {
+        $this->validateParams($params);
         $position = $this->getPositionById($id);
         if ($position) {
             $position->update($params);
@@ -47,5 +51,27 @@ class PositionService
         }
 
         return false;
+    }
+    public function getAllPositionsPaginated($pageSize = 5, $page = 1, $search = null)
+    {
+        $query = Position::query();
+
+        if ($search) {
+            $query->where('name', 'like', '%' . $search . '%');
+        }
+
+        return $query->paginate($page, ['*'], 'page', $pageSize);
+    }
+    
+    private function validateParams($params)
+    {
+        $validator = Validator::make($params, [
+            'name' => 'required|string|max:255',
+            'description' => 'required|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            throw new ValidationException($validator);
+        }
     }
 }

@@ -14,13 +14,24 @@ class AreaController extends Controller
         $this->areaService = $areaService;
     }
 
-    public function index()
+    public function index(Request $request)
     {
         try {
-            $areas = $this->areaService->getAllAreas();
+            $perPage = $request->query('p', 1);
+            $size = $request->query('s', 5);
+            $search = $request->query('q', null);
+            $areas = $this->areaService->getAllAreasPaginated($perPage, $size, $search);
             return response()->json([
-                'message' => 'Areas retrieved successfully.',
-                'data' => $areas,
+                'message' => 'Areas retrieved successfully',
+                'data' => $areas->items(),
+                'pagination' => [
+                    'total' => $areas->total(),
+                    'size' => $areas->perPage(),
+                    'current_page' => $areas->currentPage(),
+                    'last_page' => $areas->lastPage(),
+                    'from' => $areas->firstItem(),
+                    'to' => $areas->lastItem(),
+                ]
             ], 200);
         } catch (\Exception $e) {
             return response()->json([

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\User;
 use App\Models\UserVerification;
 use App\Support\UserStatus;
+use App\Support\Role;
 use App\Mail\OtpVerificationMail;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
@@ -18,10 +19,12 @@ use Laravel\Socialite\Contracts\User as SocialiteUser;
 class AuthService
 {
     protected $otpService;
+    protected $roleService;
 
-    public function __construct(OtpService $otpService)
+    public function __construct(OtpService $otpService, RoleService $roleService)
     {
         $this->otpService = $otpService;
+        $this->roleService = $roleService;
     }
 
     public function register(array $data)
@@ -34,6 +37,8 @@ class AuthService
             'password' => Hash::make($data['password']),
             'status' => UserStatus::PENDING
         ]);
+
+        $this->roleService->assignRoleToUser($user, Role::USER);
 
         $this->sendVerificationOtp($user);
 
@@ -57,7 +62,7 @@ class AuthService
     {
         $verification = $this->otpService->generateOtp($user);
 
-        $this->sendEmailVerification($verification->otp_code);
+        $this->sendEmailVerification($verification->otp_code, $user);
     }
 
     private function sendEmailVerification($token, $user) {

@@ -14,20 +14,33 @@ class FormOfWorkController extends Controller
         $this->formOfWorkService = $formOfWorkService;
     }
 
-    public function index()
+    public function index(Request $request)
     {
+
         try {
-            $formOfWorks = $this->formOfWorkService->getAllFormOfWorks();
+            $perPage = $request->query('p', 1);
+            $size = $request->query('s', 5);
+            $search = $request->query('q', null);
+            $form_of_works = $this->formOfWorkService->getAllFormOfWorkPaginated($perPage, $size, $search);
             return response()->json([
-                'message' => 'Form of works retrieved successfully.',
-                'data' => $formOfWorks,
+                'message' => 'Form of works retrieved successfully',
+                'data' => $form_of_works->items(),
+                'pagination' => [
+                    'total' => $form_of_works->total(),
+                    'size' => $form_of_works->perPage(),
+                    'current_page' => $form_of_works->currentPage(),
+                    'last_page' => $form_of_works->lastPage(),
+                    'from' => $form_of_works->firstItem(),
+                    'to' => $form_of_works->lastItem(),
+                ]
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Failed to retrieve Form of works.',
+                'message' => 'Failed to retrieve form of works.',
                 'error' => $e->getMessage(),
             ], 500);
         }
+
     }
 
     public function store(Request $request)

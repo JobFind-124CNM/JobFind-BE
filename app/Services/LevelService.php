@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Level;
+use Illuminate\Validation\ValidationException;
+use Validator;
 
 class LevelService
 {
@@ -25,11 +27,13 @@ class LevelService
 
     public function createLevel($params)
     {
+        $this->validateParams($params);
         return $this->level->create($params);
     }
 
     public function updateLevel($id, $params)
     {
+        $this->validateParams($params);
         $level = $this->getLevelById($id);
 
         if ($level) {
@@ -50,5 +54,26 @@ class LevelService
         }
 
         return false;
+    }
+    public function getAllLevelsPaginated($pageSize = 5, $page = 1, $search = null)
+    {
+        $query = Level::query();
+
+        if ($search) {
+            $query->where('name', 'like', '%' . $search . '%');
+        }
+
+        return $query->paginate($page, ['*'], 'page', $pageSize);
+    }
+    
+    private function validateParams($params)
+    {
+        $validator = Validator::make($params, [
+            'name' => 'required|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            throw new ValidationException($validator);
+        }
     }
 }

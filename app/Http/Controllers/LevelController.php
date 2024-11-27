@@ -14,13 +14,24 @@ class LevelController extends Controller
         $this->levelService = $levelService;
     }
 
-    public function index()
+    public function index(Request $request)
     {
         try {
-            $levels = $this->levelService->getAllLevels();
+            $perPage = $request->query('p', 1);
+            $size = $request->query('s', 5);
+            $search = $request->query('q', null);
+            $levels = $this->levelService->getAllLevelsPaginated($perPage, $size, $search);
             return response()->json([
-                'message' => 'Levels retrieved successfully.',
-                'data' => $levels,
+                'message' => 'Levels retrieved successfully',
+                'data' => $levels->items(),
+                'pagination' => [
+                    'total' => $levels->total(),
+                    'size' => $levels->perPage(),
+                    'current_page' => $levels->currentPage(),
+                    'last_page' => $levels->lastPage(),
+                    'from' => $levels->firstItem(),
+                    'to' => $levels->lastItem(),
+                ]
             ], 200);
         } catch (\Exception $e) {
             return response()->json([

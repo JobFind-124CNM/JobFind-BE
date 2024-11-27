@@ -15,13 +15,24 @@ class PositionController extends Controller
     }
 
 
-    public function index()
+    public function index(Request $request)
     {
         try {
-            $positions = $this->positionService->getAllPositions();
+            $perPage = $request->query('p', 1);
+            $size = $request->query('s', 5);
+            $search = $request->query('q', null);
+            $positions = $this->positionService->getAllPositionsPaginated($perPage, $size, $search);
             return response()->json([
-                'message' => 'Positions retrieved successfully.',
-                'data' => $positions,
+                'message' => 'Positions retrieved successfully',
+                'data' => $positions->items(),
+                'pagination' => [
+                    'total' => $positions->total(),
+                    'size' => $positions->perPage(),
+                    'current_page' => $positions->currentPage(),
+                    'last_page' => $positions->lastPage(),
+                    'from' => $positions->firstItem(),
+                    'to' => $positions->lastItem(),
+                ]
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
