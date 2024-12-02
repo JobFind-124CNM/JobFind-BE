@@ -21,12 +21,16 @@ class FirebaseService
             ->withDatabaseUri(config('services.firebase.database_url'));
 
         $this->storage = $firebase->createStorage([
-            'bucket' => $storageBucket
+            'storageBucket' => $storageBucket
         ]);
     }
 
     public function uploadFile($file)
     {
+        if (!$file) {
+            throw new \Exception('No file provided');
+        }
+
         $bucket = $this->storage->getBucket();
         $fileName = 'cv_uploads/' . uniqid() . '.' . $file->getClientOriginalExtension();
         $bucket->upload(

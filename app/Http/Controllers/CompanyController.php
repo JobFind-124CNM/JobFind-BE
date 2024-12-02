@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\CompanyService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class CompanyController extends Controller
 {
@@ -43,23 +44,75 @@ class CompanyController extends Controller
 
     }
 
-
     public function store(Request $request)
     {
-        try {
-            $company = $this->companyService->createCompany($request->all());
-            return response()->json([
-                'message' => 'Company created successfully.',
-                'data' => $company,
-            ], 201);
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'Failed to create company.',
-                'error' => $e->getMessage(),
-            ], 500);
+        $params = $request->all();
+
+        if ($request->hasFile('logo')) {
+            $params['logo'] = $request->file('logo');
         }
+
+        if ($request->hasFile('thumbnail')) {
+            $params['thumbnail'] = $request->file('thumbnail');
+        }
+
+        if ($request->hasFile('contract')) {
+            $params['contract'] = $request->file('contract');
+        }
+
+        $company = $this->companyService->createCompany($params);
+
+        return response()->json([
+            'code' => 201,
+            'message' => 'Company created successfully',
+            'data' => $company
+        ], 201);
     }
 
+    public function getCompanyByUser() {
+        $user = Auth::user();
+
+        $company = $this->companyService->getCompanyById($user->company_id);
+        return response()->json([
+            'message' => 'Company retrieved successfully',
+            'data' => $company
+        ], 200);
+    }
+
+    public function updateCompanyStatus(Request $request, $companyId)
+    {
+        $status = $request->input('status');
+
+        $company = $this->companyService->updateCompanyStatus($companyId, $status);
+
+        return response()->json([
+            'code' => 200,
+            'message' => 'Company status updated successfully',
+            'data' => $company
+        ], 200);
+    }
+
+    public function getPendingCompanies(Request $request)
+    {
+        $pageSize = $request->query('s', 5);
+        $page = $request->query('p', 1);
+
+        $companies = $this->companyService->getPendingCompanies($pageSize, $page);
+
+        return response()->json([
+            'code' => 200,
+            'message' => 'Pending companies retrieved successfully',
+            'data' => $companies->items(),
+            'pagination' => [
+                'total' => $companies->total(),
+                'size' => $companies->perPage(),
+                'current_page' => $companies->currentPage(),
+                'last_page' => $companies->lastPage(),
+                'from' => $companies->firstItem(),
+                'to' => $companies->lastItem(),
+            ]
+        ], 200);
+    }
 
     public function show($id)
     {
@@ -87,7 +140,21 @@ class CompanyController extends Controller
     public function update(Request $request, $id)
     {
         try {
-            $company = $this->companyService->updateCompany($id, params: $request->all());
+            $params = $request->all();
+
+            if ($request->hasFile('logo')) {
+                $params['logo'] = $request->file('logo');
+            }
+
+            if ($request->hasFile('thumbnail')) {
+                $params['thumbnail'] = $request->file('thumbnail');
+            }
+
+            if ($request->hasFile('contract')) {
+                $params['contract'] = $request->file('contract');
+            }
+
+            $company = $this->companyService->updateCompany($id, $params);
 
             if (!$company) {
                 return response()->json([

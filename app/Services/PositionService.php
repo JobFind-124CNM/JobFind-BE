@@ -15,6 +15,10 @@ class PositionService
         $this->position = $position;
     }
 
+    public function findAll() {
+        return Position::all();
+    }
+
     public function getAllPositions()
     {
         return $this->position->all();

@@ -45,6 +45,7 @@ Route::group([
     'middleware' => 'api', 'jwt.auth', 'auth',
     'prefix' => 'v1/positions'
 ], function($router) {
+    Route::get('/all', [PositionController::class, 'findAll']);
     Route::post('/', [PositionController::class, 'store']);
     Route::get('/{id}', [PositionController::class, 'show']);
     Route::put('/{id}', [PositionController::class, 'update']);
@@ -64,12 +65,15 @@ Route::group([
 
 Route::get('v1/companies', [CompanyController::class, 'index']);
 Route::group([
-    'middleware' => 'api', 'jwt.auth', 'auth',
+    'middleware' => 'api', 'auth.jwt', 'auth',
     'prefix' => 'v1/companies'
 ], function($router) {
+    Route::post('/{id}', [CompanyController::class, 'update']);
+    Route::get('/pending', [CompanyController::class, 'getPendingCompanies'])->middleware('auth.jwt', 'role:ADMIN');
+    Route::put('/{companyId}/verify', [CompanyController::class, 'updateCompanyStatus'])->middleware('auth.jwt', 'role:ADMIN');
+    Route::get('/my-company', [CompanyController::class, 'getCompanyByUser']);
     Route::post('/', [CompanyController::class, 'store']);
     Route::get('/{id}', [CompanyController::class, 'show']);
-    Route::put('/{id}', [CompanyController::class, 'update']);
     Route::put('/{id}/status', [CompanyController::class, 'updateStatus']);
     Route::delete('/{id}', [CompanyController::class, 'destroy']);
 });
@@ -83,65 +87,15 @@ Route::group([
     Route::get('/{id}', [FormOfWorkController::class, 'show']);
     Route::put('/{id}', [FormOfWorkController::class, 'update']);
     Route::delete('/{id}', [FormOfWorkController::class, 'destroy']);
+});
 
-// Route::middleware(['auth:api', 'admin'])->group(function () {
-//     Route::post('/levels', [LevelController::class, 'store']);
-//     Route::get('/levels/{id}', [LevelController::class, 'show']);
-//     Route::put('/levels/{id}', [LevelController::class, 'update']);
-//     Route::delete('/levels/{id}', [LevelController::class, 'destroy']);
-// });
-
-// Route::get('v1/positions', [PositionController::class, 'index']);
-// Route::middleware(['auth:api', 'admin'])->group(function () {
-//     Route::post('/positions', [PositionController::class, 'store']);
-//     Route::get('/positions/{id}', [PositionController::class, 'show']);
-//     Route::put('/positions/{id}', [PositionController::class, 'update']);
-//     Route::delete('/positions/{id}', [PositionController::class, 'destroy']);
-// });
-// Route::get('v1/areas', [AreaController::class, 'index']);
-// Route::middleware('auth:api')->group(function () {
-//     Route::post('/areas', [AreaController::class, 'store']); 
-//     Route::get('/areas/{id}', [AreaController::class, 'show']);
-//     Route::put('/areas/{id}', [AreaController::class, 'update']);
-//     Route::delete('/areas/{id}', [AreaController::class, 'destroy']);
-// });
-
-
-// Route::get('v1/companies', [CompanyController::class, 'index']);
-// Route::middleware('auth:api')->group(function () {
-//     Route::post('/', [CompanyController::class, 'store']);
-//     Route::get('/companies/{id}', [CompanyController::class, 'show']);
-//     Route::put('/companies/{id}', [CompanyController::class, 'update']);
-//     Route::delete('/companies/{id}', [CompanyController::class, 'destroy']);
-// });
-
-// Route::group([
-//     'middleware' => 'api', 'jwt.auth', 'auth',
-//     'prefix' => 'v1/companies'
-// ], function($router) {
-//     Route::get('/', [CompanyController::class, 'index']);
-//     Route::get('/{id}', [CompanyController::class, 'show']);
-//     Route::post('/', [CompanyController::class, 'store']);
-//     Route::put('/{id}', [CompanyController::class, 'update']);
-//     Route::delete('/{id}', [CompanyController::class, 'destroy']);
-// });
-
-// Route::get('v1/form-of-works', [FormOfWorkController::class, 'index']);
-// Route::middleware('auth:api')->group(function () {
-//     Route::post('/form-of-works', [FormOfWorkController::class, 'store']);
-//     Route::get('/form-of-works/{id}', [FormOfWorkController::class, 'show']);
-//     Route::put('/form-of-works/{id}', [FormOfWorkController::class, 'update']);
-//     Route::delete('/form-of-works/{id}', [FormOfWorkController::class, 'destroy']);
-// });
-
-// Route::get('v1/categories', [CategoryController::class, 'index']);
-// Route::middleware('auth:api')->group(function () {
-//     Route::post('/categories', [CategoryController::class, 'store']);
-//     Route::get('/categories/{id}', [CategoryController::class, 'show']);
-//     Route::put('/categories/{id}', [CategoryController::class, 'update']);
-//     Route::delete('/categories/{id}', [CategoryController::class, 'destroy']);
-// });
-
+Route::get('v1/positions', [PositionController::class, 'index']);
+Route::middleware(['auth:api', 'admin'])->group(function () {
+    Route::post('/positions', [PositionController::class, 'store']);
+    Route::get('/positions/{id}', [PositionController::class, 'show']);
+    Route::put('/positions/{id}', [PositionController::class, 'update']);
+    Route::delete('/positions/{id}', [PositionController::class, 'destroy']);
+});
 
 Route::get('v1/categories', [CategoryController::class, 'index']);
 Route::group([
@@ -211,6 +165,9 @@ Route::group([
 Route::group([
     'prefix' => 'v1/posts'
 ], function($router) {
+    Route::get('/user-company-posts', [PostController::class, 'getUserCompanyPosts']);
+    Route::get('/{postId}/candidates', [PostController::class, 'getPostUsers']);
+    Route::get('/{postId}/candidates/{userId}', [PostController::class, 'getCandidatesApplied']);
     Route::get('/newest', [PostController::class, 'getTopNewestPosts']);
     Route::get('/applied', [PostController::class, 'getUserAppliedPosts']);
     Route::get('/category/{categoryId}', [PostController::class, 'getByCategory']);
@@ -225,4 +182,14 @@ Route::group([
     Route::post('/{postId}/apply', [PostController::class, 'apply']);
     Route::put('/{id}', [PostController::class, 'update'])->middleware('auth.jwt','role:ADMIN,HR');
     Route::delete('/{id}', [PostController::class, 'destroy'])->middleware('auth.jwt','role:ADMIN,HR');
+});
+
+Route::group(['middleware' => ['web', 'auth']], function(){
+    Route::get('dropbox/connect', function(){
+        return Dropbox::connect();
+    });
+
+    Route::get('dropbox/disconnect', function(){
+        return Dropbox::disconnect('app/dropbox');
+    });
 });

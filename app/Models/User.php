@@ -13,7 +13,7 @@ class User extends Authenticatable implements JWTSubject
 {
     use HasApiTokens, HasFactory, Notifiable;
 
-    protected $table = 'user';
+    protected $table = 'users';
 
      protected $fillable = [
         'username',
@@ -54,11 +54,9 @@ class User extends Authenticatable implements JWTSubject
         return $this->roles->contains('name', $role);
     }
 
-    public function companies()
+    public function company()
     {
-        return $this->belongsToMany(Company::class, 'user_company')
-                    ->withPivot('status')
-                    ->withTimestamps();
+        return $this->belongsTo(Company::class);
     }
 
      public function posts()

@@ -151,7 +151,7 @@ class AuthController extends Controller
     {
         $user = auth()->user();
         $user->load('roles');
-        $user->load('companies');
+        $user->load('company');
 
         return response()->json([
             'status' => true,

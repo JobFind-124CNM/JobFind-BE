@@ -10,7 +10,7 @@ class UserService
 {
     public function getAllUsers($pageSize = 5, $page = 1, $search = "")
     {
-        $query = User::with('roles');
+        $query = User::with('roles', 'company');
 
         if (!empty($search)) {
             $query->where(function ($q) use ($search) {

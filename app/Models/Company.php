@@ -18,13 +18,15 @@ class Company extends Model
         'tax_number',
         'status',
         'website',
+        'email',
+        'phone',
+        'address',
+        'contract'
     ];
 
-     public function users()
+    public function users()
     {
-        return $this->belongsToMany(User::class, 'user_companies')
-                    ->withPivot('status')
-                    ->withTimestamps();
+        return $this->hasMany(User::class);
     }
 
     public function posts()

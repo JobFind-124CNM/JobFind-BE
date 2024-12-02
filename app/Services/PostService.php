@@ -32,8 +32,15 @@ class PostService
         return Post::with(['tags', 'levels', 'positions', 'users', 'company', 'area', 'formOfWork', 'category'])->findOrFail($id);
     }
 
-    public function createPost(array $data)
+    public function createPost(array $data, $userId)
     {
+        $user = User::findOrFail($userId);
+        $company = Company::findOrFail($user->company_id);
+
+        if (!$company || !in_array($company->status, ['active', 'verified'])) {
+            throw new \Exception('Your company is not authorized to create posts');
+        }
+
         $this->validatePost($data);
 
         $tags = $data['tags'] ?? [];
@@ -45,35 +52,52 @@ class PostService
 
         $post = Post::create($data);
 
-        $post->tags()->sync($tags);
-        $post->levels()->sync($levels);
-        $post->positions()->sync($positions);
-        $post->users()->sync($users);
+        $post->tags()->attach($tags);
+        $post->levels()->attach($levels);
+        $post->positions()->attach($positions);
+        $post->users()->attach($userId, ['status' => 'posted']);
 
         return $post->load(['tags', 'levels', 'positions', 'users', 'company', 'area', 'formOfWork', 'category']);
     }
 
-    public function updatePost($id, array $data)
+    public function updatePost($postId, array $data)
     {
-        $this->validatePost($data);
+        $validator = Validator::make($data, [
+            'title' => 'required|string|max:255',
+            'description' => 'required|string',
+            'status' => 'required|string',
+            'company_id' => 'required|integer',
+            'area_id' => 'required|integer',
+            'due_at' => 'required|date',
+            'benefit' => 'nullable|string',
+            'form_of_work_id' => 'required|integer',
+            'amount' => 'required|integer',
+            'salary' => 'required|numeric',
+            'category_id' => 'required|integer',
+            'tags' => 'array',
+            'levels' => 'array',
+            'positions' => 'array',
+        ]);
 
-        $post = Post::findOrFail($id);
+        if ($validator->fails()) {
+            throw new \Illuminate\Validation\ValidationException($validator);
+        }
+
+        $post = Post::findOrFail($postId);
 
         $tags = $data['tags'] ?? [];
         $levels = $data['levels'] ?? [];
         $positions = $data['positions'] ?? [];
-        $users = $data['users'] ?? [];
 
-        unset($data['tags'], $data['levels'], $data['positions'], $data['users']);
+        unset($data['tags'], $data['levels'], $data['positions']);
 
         $post->update($data);
 
         $post->tags()->sync($tags);
         $post->levels()->sync($levels);
         $post->positions()->sync($positions);
-        $post->users()->sync($users);
 
-        return $post->load(['tags', 'levels', 'positions', 'users', 'company', 'area', 'formOfWork', 'category']);
+        return $post->load(['tags', 'levels', 'positions', 'company', 'area', 'formOfWork', 'category']);
     }
 
     public function deletePost($id)
@@ -96,7 +120,7 @@ class PostService
 
     public function getPostsByCompany($companyId, $pageSize = 10, $page = 1)
     {
-        return Post::with(['tags', 'levels', 'positions', 'users', 'company', 'area', 'formOfWork', 'category'])
+        return Post::with(['tags', 'levels', 'positions', 'company', 'area', 'formOfWork', 'category'])
             ->where('company_id', $companyId)
             ->paginate($pageSize, ['*'], 'page', $page);
     }
@@ -132,7 +156,7 @@ class PostService
             ->paginate($pageSize, ['*'], 'page', $page);
     }
     
-    public function advancedSearchPosts($filters, $pageSize = 10, $page = 1, $search = null)
+    public function advancedSearchPosts($filters, $pageSize = 10, $page = 1, $search = "")
     {
         $query = Post::with(['company', 'category', 'formOfWork', 'tags', 'levels', 'positions', 'area']);
 
@@ -161,17 +185,28 @@ class PostService
             $query->whereIn('form_of_work_id', $filters['form_of_work_ids']);
         }
 
-        if (!empty($filters['experience_levels'])) {
-            $query->whereHas('levels', function ($q) use ($filters) {
-                $q->whereIn('name', $filters['experience_levels']);
-            });
-        }
-
-        if (!empty($filters['posted_within_days'])) {
+        if (!empty($filters['posted_within'])) {
             $query->where(function ($q) use ($filters) {
-                foreach ($filters['posted_within_days'] as $days) {
-                    $date = Carbon::now()->subDays($days);
-                    $q->orWhere('created_at', '>=', $date);
+                foreach ($filters['posted_within'] as $period) {
+                    switch ($period) {
+                        case 'today':
+                            $date = Carbon::today();
+                            break;
+                        case '1-2':
+                            $date = Carbon::now()->subDays(2);
+                            break;
+                        case '3-7':
+                            $date = Carbon::now()->subDays(7);
+                            break;
+                        case '1-month':
+                            $date = Carbon::now()->subMonth();
+                            break;
+                        default:
+                            $date = null;
+                    }
+                    if ($date) {
+                        $q->orWhere('created_at', '>=', $date);
+                    }
                 }
             });
         }
@@ -191,6 +226,7 @@ class PostService
     {
         $post = Post::findOrFail($postId);
         $data['status'] = 'Applied';
+        $data['apply_date'] = Carbon::now();
 
         $post->users()->attach($user, $data);
 
@@ -201,6 +237,7 @@ class PostService
     {
         $user = User::findOrFail($userId);
         $posts = $user->posts()
+            ->wherePivot('status', 'applied')
             ->with(['company', 'category', 'formOfWork', 'tags', 'levels', 'positions'])
             ->paginate($pageSize, ['*'], 'page', $page);
 
@@ -242,6 +279,7 @@ class PostService
         $validator = Validator::make($data, [
             'title' => 'required|string|max:255',
             'description' => 'required|string',
+            'qualification' => 'required|string',
             'status' => 'required|string',
             'company_id' => 'nullable|exists:company,id',
             'area_id' => 'nullable|exists:area,id',
@@ -264,5 +302,75 @@ class PostService
         if ($validator->fails()) {
             throw new ValidationException($validator);
         }
+    }
+
+    public function getPostUsers($postId, $pageSize = 10, $page = 1)
+    {
+        $post = Post::with(['users' => function ($query) {
+            $query->select('users.id', 'users.username', 'users.email', 'users.avatar')
+                  ->withPivot('cv', 'subject', 'created_at');
+        }])->findOrFail($postId);
+
+        $users = $post->users()->paginate($pageSize, ['*'], 'page', $page);
+
+        $transformedUsers = $users->map(function ($user) {
+            return [
+                'user' => [
+                    'id' => $user->id,
+                    'username' => $user->username,
+                    'email' => $user->email,
+                    'avatar' => $user->avatar,
+                ],
+                'pivot' => [
+                    'cv' => $user->pivot->cv,
+                    'post_id' => $user->pivot->post_id,
+                    'user_id' => $user->pivot->user_id,
+                    'subject' => $user->pivot->subject,
+                    'cover_letter' => $user->pivot->cover_letter,
+                    'status' => $user->pivot->status,
+                    'created_at' => $user->pivot->created_at,
+                    'updated_at' => $user->pivot->updated_at,
+                ]
+            ];
+        });
+
+        return [
+            'data' => $transformedUsers,
+            'pagination' => [
+                'total' => $users->total(),
+                'size' => $users->perPage(),
+                'current_page' => $users->currentPage(),
+                'last_page' => $users->lastPage(),
+                'from' => $users->firstItem(),
+                'to' => $users->lastItem(),
+            ]
+        ];
+    }
+
+    public function getUserCompanyPosts($userId, $pageSize = 10, $page = 1, $filters = [])
+    {
+        $user = User::findOrFail($userId);
+        $companyId = $user->company_id;
+
+        $query = Post::where('company_id', $companyId)
+            ->whereHas('users', function ($query) use ($userId) {
+                $query->where('user_id', $userId);
+            });
+
+        if (!empty($filters['keyword'])) {
+            $query->where(function ($q) use ($filters) {
+                $q->where('title', 'like', '%' . $filters['keyword'] . '%')
+                  ->orWhere('description', 'like', '%' . $filters['keyword'] . '%');
+            });
+        }
+
+        if (!empty($filters['area_id'])) {
+            $query->where('area_id', $filters['area_id']);
+        }
+
+        $posts = $query->with(['company', 'category', 'formOfWork', 'tags', 'levels', 'positions', 'area'])
+            ->paginate($pageSize, ['*'], 'page', $page);
+
+        return $posts;
     }
 }

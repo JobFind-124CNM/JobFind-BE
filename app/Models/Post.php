@@ -23,6 +23,7 @@ class Post extends Model
         'amount',
         'salary',
         'category_id',
+        "qualification"
     ];
 
     public function company()
@@ -60,7 +61,7 @@ class Post extends Model
         return $this->belongsTo(Category::class);
     }
 
-     public function users()
+    public function users()
     {
         return $this->belongsToMany(User::class, 'user_post', 'post_id', 'user_id')
                     ->withPivot('cv', 'cover_letter', 'status', 'subject')

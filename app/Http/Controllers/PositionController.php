@@ -14,6 +14,14 @@ class PositionController extends Controller
         $this->positionService = $positionService;
     }
 
+    public function findAll() {
+        $positions = $this->positionService->findAll();
+        return response()->json([
+            'code' => 200,
+            'message' => 'Positions retrieved successfully',
+            'data' => $positions
+        ], 200);
+    }
 
     public function index(Request $request)
     {
